@@ -1,0 +1,171 @@
+syntax = "proto3";
+
+// $ protoc job.proto --go_out=plugins=grpc:.
+
+package serialization;
+
+option go_package = "serialization";
+
+// The Job service definition.
+service Job {
+  rpc EnqueueJob(JobRequest) returns (JobResponse) {}
+  rpc ChangePriority(ChangePriorityRequest) returns (JobResponse) {}
+  rpc StopJob(StopJobRequest) returns (JobResponse) {}
+  rpc DeleteJob(DeleteJobRequest) returns (JobResponse) {}
+  rpc RerunJob(RerunJobRequest) returns (JobResponse) {}
+}
+
+message JobRequest {
+    string type = 1;
+    string remark = 2;
+
+    JobTraining training = 3;
+
+    double priority = 4;
+    string createdAt = 5;
+    string createdBy = 6;
+    string name = 7;
+    string target = 8;
+
+    // maximum executing time for the training batchv1.Job
+    uint64 activeDeadlineSeconds = 9;
+    // the planning start time in RFC3339
+    string scheduledAt = 10;
+}
+
+message JobTraining {
+
+    // specify the training type (can be "predefined" or "custom")
+    string type = 2;
+
+    string application = 3;
+
+    map<string, Resource> resources = 4;
+
+    JobWorkspace workspace = 5;
+
+    // when the build config is specified, we will add steps to build a docker
+    // image in the cluster.
+    JobBuildConfig buildConfig = 6;
+
+    // when container is specified, a container will be built with the
+    // information.
+    repeated Container containers = 7;
+
+    repeated Container finalizers = 8;
+
+    // training config is a JSON string
+    string jsonConfig = 9;
+
+    string model = 10;
+}
+
+// JobBuildConfig is used for building the docker image from the jupyter notebook
+message JobBuildConfig {
+
+    string from = 1;
+
+    string tag = 2;
+
+    string file = 3;
+
+    string entrypoint = 4;
+
+    string registryServer = 5;
+
+    // runtime fields
+    repeated string args = 6;
+
+    repeated EnvVar env = 7;
+
+    string trainingLogPath = 8;
+
+    ModelArtifact modelArtifact = 9;
+}
+
+message ModelArtifact {
+  
+    string identity = 1;
+
+    string checkpointDir = 2;
+}
+
+message Container {
+
+    string name = 1;
+
+    string image = 2;
+
+    repeated string command = 3;
+
+    repeated string args = 4;
+
+    repeated EnvVar env = 5;
+
+    string workingDir = 6;
+
+    string imagePullPolicy = 7;
+}
+
+message EnvVar {
+    string name = 1;
+    string value = 2;
+}
+
+message JobWorkspace {
+    message BatchCreate {
+        repeated string datasetIds = 1;
+    }
+
+    message BatchLoad {
+        string id = 1;
+    }
+
+    BatchLoad load = 1;
+    BatchCreate create = 2;
+
+    double jpegQuality = 3;
+    string annotation = 4;
+}
+
+// Kubernetes Resource Quotas https://kubernetes.io/docs/concepts/policy/resource-quotas/
+message ResourceRequest {
+    string cpu = 1;
+    string mem = 2;
+    string gpu = 3;
+    uint32 replica = 4; // currently not used
+}
+
+message Resource {
+    ResourceRequest request = 1;
+    ResourceLimit limit = 2;
+}
+
+message ResourceLimit {
+    string cpu = 1;
+    string mem = 2;
+    string gpu = 3;
+}
+
+message JobResponse {
+    string id = 1;
+    bool success = 2;
+    string errmsg = 3;
+}
+
+message StopJobRequest {
+    string id = 1;
+}
+
+message ChangePriorityRequest {
+	string id = 1;
+	double priority = 2;
+}
+
+message DeleteJobRequest {
+	string id = 1;
+}
+
+message RerunJobRequest {
+    string id = 1;
+}
